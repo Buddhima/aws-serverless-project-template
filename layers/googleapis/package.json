@@ -1,0 +1,7 @@
+{
+  "name": "googleapis-layer",
+  "version": "1.0.0",
+  "dependencies": {
+    "googleapis": "^39.2.0"
+  }
+}

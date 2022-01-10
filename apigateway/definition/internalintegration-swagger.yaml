@@ -1,0 +1,50 @@
+openapi: 3.0.1
+info:
+  title: InternalIntegrationAPI
+  version: v1.0.0
+servers:
+- url: /
+paths:
+  /deal/qualified-lead:
+    post:
+      requestBody:
+        description: Request Body
+        content:
+          'application/x-www-form-urlencoded':
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: string
+        required: true
+      responses:
+        200:
+          description: ""
+          content: {}
+      x-amazon-apigateway-integration:
+        uri: 
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:states:action/StartExecution
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        credentials:
+          Fn::GetAtt: [ApiGatewayIamRole, Arn]
+        responses:
+          default:
+            statusCode: "200"
+        requestTemplates:
+          application/x-www-form-urlencoded: 
+            Fn::Sub: |-
+              {
+     
+                 "name": "$context.requestId",
+                 "stateMachineArn": "${FZ2DealStageUpdatedToQualifiedLeadStateMachine.Arn}",
+                 "input": "{\"payload\" : \"$input.body\"}"
+                 
+              }
+
+        type: aws
+
+
+
+
+components: {}

@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Template for Org Serverless Projects
+
+  Integrations to handle the business needs of Org
+
+Parameters:
+  AppName:
+    Type: String
+    Default: ii-app
+  Stage:
+    Type: String
+    Default: dev
+
+
+Globals:
+  Function:
+    Runtime: nodejs14.x
+    Timeout: 10
+    Handler: index.handler
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        Deployment: !Ref Stage
+    Tags:
+      Organization: Org
+      Project: InternalIntegration
+      Environment: Development
+
+
+
+Resources:
+  
+  ##### Lambda Functions #####
+  # More info about Function Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html
+
+
+  InternalRetrieveApplicationConfigurationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${AppName}-${Stage}-RetrieveApplicationConfigurationsFn
+      CodeUri: functions/internal-retrieve_application_configurations/
+
+
+
+
+
+  ##### Lambda Layers #####
+
+  GoogleapisLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+        Description: Googleapis Layer
+        ContentUri: layers/googleapis
+        CompatibleRuntimes:
+          - nodejs14.x
+        RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: nodejs14.x
+
+
+
+  ##### State Machines #####
+
+  FZ2DealStageUpdatedToQualifiedLeadStateMachine:
+    Type: AWS::Serverless::StateMachine # More info about State Machine Resource: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html
+    Properties:
+      Name:
+        Fn::Sub: ${AppName}-${Stage}-FZ2DealStageUpdatedToQualifiedLeadSM
+      DefinitionUri: statemachine/fz2_deal_stage_updated_to_qualified_lead.asl.json
+      DefinitionSubstitutions:
+        InternalRetrieveApplicationConfigurationsFunctionArn: !GetAtt InternalRetrieveApplicationConfigurationsFunction.Arn
+
+      Policies: # Find out more about SAM policy templates: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - LambdaInvokePolicy:
+            FunctionName: !Ref InternalRetrieveApplicationConfigurationsFunction
+
+      Tags:
+        Organization: Org
+        Project: InternalIntegration
+        Environment: Development
+
+
+
+
+
+  ##### HTTP APIs #####
+
+  InternalIntegrationApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: apigateway/definition/internalintegration-swagger.yaml
+
+
+  ##### API Gateway Role and Policy #####
+
+  ApiGatewayIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - 'apigateway.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      Tags:
+      - Key: Organization
+        Value: Novigi
+      - Key: Project
+        Value: InternalIntegration
+      - Key: Environment
+        Value: Development
+
+  ApiGatewayPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "service-policy-apigateway"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        -
+          Effect: 'Allow'
+          Action: 'states:*'
+          Resource: '*'
+      Roles: 
+      - 
+        !Ref ApiGatewayIamRole
+
+
+
+
+
+
+Outputs:
+  # StockTradingStateMachineHourlyTradingSchedule is an implicit Schedule event rule created out of Events key under Serverless::StateMachine
+  # Find out more about other implicit resources you can reference within SAM
+  # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification-generated-resources.html
+  InternalIntegrationApi: 
+    Description: "API Gateway endpoint URL for deployed stage"
+    Value: !Sub "https://${InternalIntegrationApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+
+

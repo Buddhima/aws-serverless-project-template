@@ -1,0 +1,17 @@
+{
+  "name": "internal-retrieve_application_configurations",
+  "version": "1.0.0",
+  "description": "internal-retrieve_application_configurations",
+  "main": "index.js",
+  "repository": "https://bitbucket.org/novigi/nov22004-projectworks-integrations",
+  "author": "Novigi",
+  "license": "MIT",
+  "dependencies": {},
+  "scripts": {
+    "test": "mocha tests/unit/"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "mocha": "^8.2.1"
+  }
+}
